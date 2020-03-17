@@ -1,0 +1,289 @@
+From daaa9fd2de92606f5b8dab2c5d6055f751fa5f58 Mon Sep 17 00:00:00 2001
+From: hongen <halitongen@gmail.com>
+Date: Wed, 25 Dec 2019 22:21:15 +0100
+Subject: [PATCH] in cis module, print R2 and an option to print out the se of
+ slope
+
+---
+ src/mode_cis/cis_chunking.cpp          | 14 ++++++++---
+ src/mode_cis/cis_conditionnal_pass.cpp | 19 +++++++++++---
+ src/mode_cis/cis_data.h                | 34 +++++++++++++++++++++++---
+ src/mode_cis/cis_initilization.cpp     |  1 +
+ src/mode_cis/cis_main.cpp              |  2 ++
+ src/mode_cis/cis_nominal_pass.cpp      |  9 +++++++
+ src/mode_cis/cis_permutation_pass.cpp  |  5 ++++
+ 7 files changed, 75 insertions(+), 9 deletions(-)
+
+diff --git a/src/mode_cis/cis_chunking.cpp b/src/mode_cis/cis_chunking.cpp
+index 878f880..0c7bb77 100644
+--- a/src/mode_cis/cis_chunking.cpp
++++ b/src/mode_cis/cis_chunking.cpp
+@@ -28,7 +28,9 @@ void cis_data::writeHeader(string fout) {
+ 		case GRP_PCA1: fdo << " ve_by_pc1 n_phe_in_grp"; break;
+ 		case GRP_MEAN: fdo << " n_phe_in_grp"; break;
+ 		}
+-		fdo << " n_var_in_cis dist_phe_var var_id var_chr var_from var_to dof1 dof2 bml1 bml2 nom_pval slope adj_emp_pval adj_beta_pval" << endl;
++		fdo << " n_var_in_cis dist_phe_var var_id var_chr var_from var_to dof1 dof2 bml1 bml2 nom_pval r_squared slope ";
++		if (std_err) fdo<<"slope_se ";
++		fdo << "adj_emp_pval adj_beta_pval" << endl;
+ 	}
+ 	if (mode == CIS_NOMI) {
+ 		if (grp_mode == GRP_NONE) fdo << "phe_id";
+@@ -39,7 +41,9 @@ void cis_data::writeHeader(string fout) {
+ 		case GRP_PCA1: fdo << " ve_by_pc1 n_phe_in_grp"; break;
+ 		case GRP_MEAN: fdo << " n_phe_in_grp"; break;
+ 		}
+-		fdo << " n_var_in_cis dist_phe_var var_id var_chr var_from var_to nom_pval slope best_hit" << endl;
++		fdo << " n_var_in_cis dist_phe_var var_id var_chr var_from var_to nom_pval r_squared slope ";
++		if(std_err) fdo << "slope_se ";
++		fdo << "best_hit" << endl;
+ 	}
+ 	if (mode == CIS_COND) {
+ 		if (grp_mode == GRP_NONE) fdo << "phe_id";
+@@ -50,7 +54,11 @@ void cis_data::writeHeader(string fout) {
+ 		case GRP_PCA1: fdo << " ve_by_pc1 n_phe_in_grp"; break;
+ 		case GRP_MEAN: fdo << " n_phe_in_grp"; break;
+ 		}
+-		fdo << " n_var_in_cis dist_phe_var var_id var_chr var_from var_to rank fwd_pval fwd_slope fwd_best_hit fwd_sig bwd_pval bwd_slope bwd_best_hit bwd_sig" << endl;
++		fdo << " n_var_in_cis dist_phe_var var_id var_chr var_from var_to rank fwd_pval fwd_r_squared fwd_slope ";
++		if(std_err) fdo << "fwd_slope_se ";
++		fdo << "fwd_best_hit fwd_sig bwd_pval bwd_r_squared ";
++		if(std_err) fdo << "bwd_slope_se ";
++		fdo << "bwd_slope bwd_best_hit bwd_sig" << endl;
+ 	}
+ 	fdo.close();
+ }
+diff --git a/src/mode_cis/cis_conditionnal_pass.cpp b/src/mode_cis/cis_conditionnal_pass.cpp
+index 7676633..fd6326c 100644
+--- a/src/mode_cis/cis_conditionnal_pass.cpp
++++ b/src/mode_cis/cis_conditionnal_pass.cpp
+@@ -61,7 +61,7 @@ void cis_data::runConditionalPass(string fout) {
+ 			unsigned int fhits = 0, fsignals = 0;
+ 			vector < int > fbest_idx;
+ 			vector < double > fbest_pvalue;
+-			vector < vector < double > > fpvalue, fslope;
++			vector < vector < double > > fpvalue, fslope,fse,fr2;
+ 			vector < vector < float > > phenotype_curr = vector < vector < float > > (group_idx[i_group].size());
+ 			for (unsigned int p = 0 ; p < group_idx[i_group].size() ; p ++) phenotype_curr[p] = phenotype_val[group_idx[i_group][p]];
+ 
+@@ -81,11 +81,14 @@ void cis_data::runConditionalPass(string fout) {
+ 				fbest_pvalue.push_back(1.0);
+ 				fpvalue.push_back(vector < double > (group_idx[i_group].size() * variant_indexes.size(), 1.0));
+ 				fslope.push_back(vector < double > (group_idx[i_group].size() * variant_indexes.size(), 0.0));
++				fr2.push_back(vector < double > (group_idx[i_group].size() * variant_indexes.size(), 0.0));
++				if (std_err) fse.push_back(vector < double > (group_idx[i_group].size() * variant_indexes.size(), 0.0));
+ 
+ 				for (unsigned int p = 0 ; p < group_idx[i_group].size() ; p ++) {
+ 					for (unsigned int v = 0 ; v < variant_indexes.size() ; v ++) {
+ 						unsigned int rel_idx = v * group_idx[i_group].size() + p;
+-						regression(genotype_val[variant_indexes[v]], phenotype_curr[p], fpvalue.back()[rel_idx], fslope.back()[rel_idx]);
++						if (std_err) regression(genotype_val[variant_indexes[v]], phenotype_curr[p], fpvalue.back()[rel_idx], fslope.back()[rel_idx], fr2.back()[rel_idx], fse.back()[rel_idx] );
++						else regression(genotype_val[variant_indexes[v]], phenotype_curr[p], fpvalue.back()[rel_idx], fslope.back()[rel_idx], fr2.back()[rel_idx]);
+ 						if (fpvalue.back()[rel_idx] <= phenotype_threshold[group_idx[i_group][p]]) {
+ 							if (fdone) fsignals ++;
+ 							fdone = false;
+@@ -101,6 +104,8 @@ void cis_data::runConditionalPass(string fout) {
+ 
+ 			fpvalue.pop_back();
+ 			fslope.pop_back();
++			if (std_err) fse.pop_back();
++			fr2.pop_back();
+ 			fbest_idx.pop_back();
+ 			fbest_pvalue.pop_back();
+ 
+@@ -116,6 +121,9 @@ void cis_data::runConditionalPass(string fout) {
+ 				vector < double > bbest_pvalue = vector < double > (fsignals, 1.0);
+ 				vector < vector < double > > bpvalue = vector < vector < double > > (fsignals, vector < double > (group_idx[i_group].size() * variant_indexes.size(), 1.0));
+ 				vector < vector < double > > bslope = vector < vector < double > > (fsignals, vector < double > (group_idx[i_group].size() * variant_indexes.size(), 0.0));
++				vector < vector < double > > br2 = vector < vector < double > > (fsignals, vector < double > (group_idx[i_group].size() * variant_indexes.size(), 0.0));
++				vector < vector < double > > bse;
++				if (std_err) bse = vector < vector < double > > (fsignals, vector < double > (group_idx[i_group].size() * variant_indexes.size(), 0.0));
+ 
+ 				for (unsigned int i_sig = 0 ; i_sig < fsignals ; i_sig ++) {
+ 
+@@ -140,7 +148,8 @@ void cis_data::runConditionalPass(string fout) {
+ 					for (unsigned int p = 0 ; p < group_idx[i_group].size() ; p ++) {
+ 						for (unsigned int v = 0 ; v < variant_indexes.size() ; v ++) {
+ 							unsigned int rel_idx = v*group_idx[i_group].size() + p;
+-							regression(genotype_val[variant_indexes[v]], phenotype_curr[p], bpvalue[i_sig][rel_idx], bslope[i_sig][rel_idx]);
++							if (std_err) regression(genotype_val[variant_indexes[v]], phenotype_curr[p], bpvalue[i_sig][rel_idx], bslope[i_sig][rel_idx], br2[i_sig][rel_idx]);
++							else regression(genotype_val[variant_indexes[v]], phenotype_curr[p], bpvalue[i_sig][rel_idx], bslope[i_sig][rel_idx], br2[i_sig][rel_idx], bse[i_sig][rel_idx]);
+ 							if (bpvalue[i_sig][rel_idx] <= phenotype_threshold[group_idx[i_group][p]]) {
+ 								if (bdone) bsignals ++;
+ 								bdone = false;
+@@ -188,11 +197,15 @@ void cis_data::runConditionalPass(string fout) {
+ 								fdo << " " << genotype_end[variant_indexes[v]];
+ 								fdo << " " << i_sig;
+ 								fdo << " " << fpvalue[i_sig][rel_idx];
++								fdo << " " << fr2[i_sig][rel_idx];
+ 								fdo << " " << fslope[i_sig][rel_idx];
++								if(std_err) fdo << " " << fse[i_sig][rel_idx];
+ 								fdo << " " << ((rel_idx == fbest_region[0])?"1":"0");
+ 								fdo << " " << ((fpvalue[i_sig][rel_idx] <= phenotype_threshold[group_idx[i_group][p]])?"1":"0");
+ 								fdo << " " << bpvalue[i_sig][rel_idx];
++								fdo << " " << br2[i_sig][rel_idx];
+ 								fdo << " " << bslope[i_sig][rel_idx];
++								if(std_err) fdo << " " << bse[i_sig][rel_idx];
+ 								fdo << " " << ((rel_idx == bbest_region[0])?"1":"0");
+ 								fdo << " " << ((bpvalue[i_sig][rel_idx] <= phenotype_threshold[group_idx[i_group][p]])?"1":"0");
+ 								fdo << endl;
+diff --git a/src/mode_cis/cis_data.h b/src/mode_cis/cis_data.h
+index 286b6f8..1eb7e8a 100644
+--- a/src/mode_cis/cis_data.h
++++ b/src/mode_cis/cis_data.h
+@@ -44,7 +44,7 @@ class cis_data : public data {
+ 	//REGIONS
+ 	genomic_region regionPhenotype;
+ 	genomic_region regionGenotype;
+-	bool full_test;
++	bool full_test,std_err;
+ 
+ 	//GENOTYPES
+ 	int genotype_count;									//variant site number
+@@ -114,7 +114,9 @@ class cis_data : public data {
+ 	double getPvalue(double, double);
+ 	double getPvalue(double, vector < double > &);
+ 	double getSlope(double, double, double);
+-	void regression(vector < float > & X, vector < float > & Y, double & pvalue, double & slope);
++	double getSE(double, double, double);
++	void regression(vector < float > & X, vector < float > & Y, double & pvalue, double & slope, double & r2);
++	void regression(vector < float > & X, vector < float > & Y, double & pvalue, double & slope, double & r2, double & se);
+ 
+ 	//ANALYSIS
+ 	void writeHeader(string);
+@@ -176,7 +178,31 @@ inline double cis_data::getSlope(double nominal_correlation, double gsd, double
+ 	else return nominal_correlation * psd / gsd;
+ }
+ 
+-inline void cis_data::regression(vector < float > & X, vector < float > & Y, double & pvalue, double & slope) {
++inline double cis_data::getSE(double r_squared, double gsd, double psd) {
++	if (gsd < 1e-16 || psd < 1e-16) return 0;
++	else{
++		double adjusted_r_squared = 1.0 - ((((double) sample_count - 1.0) / ((double) sample_count - 2.0)) * (1.0 - r_squared));
++		double std_err_of_the_regression =  sqrt(1.0 - adjusted_r_squared) * psd;
++		double population_sd_of_genotypes = sqrt((gsd * gsd * ((double) sample_count - 1.0)) / (double) sample_count);
++		//cerr << r_squared << " " << gsd << " " << psd << " " << adjusted_r_squared << " " << std_err_of_the_regression << " " << population_sd_of_genotypes << " " << (std_err_of_the_regression / sqrt(sample_count)) * (1.0 / population_sd_of_genotypes) << endl;
++		return (std_err_of_the_regression / sqrt(sample_count)) * (1.0 / population_sd_of_genotypes);
++	}
++}
++
++inline void cis_data::regression(vector < float > & X, vector < float > & Y, double & pvalue, double & slope, double & r2) {
++	vector < float > Xtmp = X;
++	vector < float > Ytmp = Y;
++	double sdXtmp = basic_stats(Xtmp).sd();
++	double sdYtmp = basic_stats(Ytmp).sd();
++	normalize(Xtmp);
++	normalize(Ytmp);
++	double correlation = getCorrelation(Xtmp, Ytmp);
++	r2 = correlation * correlation;
++	pvalue = getPvalue(correlation, sample_count - 2);
++	slope = getSlope(correlation, sdXtmp, sdYtmp);
++}
++
++inline void cis_data::regression(vector < float > & X, vector < float > & Y, double & pvalue, double & slope, double & r2, double & se) {
+ 	vector < float > Xtmp = X;
+ 	vector < float > Ytmp = Y;
+ 	double sdXtmp = basic_stats(Xtmp).sd();
+@@ -184,8 +210,10 @@ inline void cis_data::regression(vector < float > & X, vector < float > & Y, dou
+ 	normalize(Xtmp);
+ 	normalize(Ytmp);
+ 	double correlation = getCorrelation(Xtmp, Ytmp);
++	r2 = correlation * correlation;
+ 	pvalue = getPvalue(correlation, sample_count - 2);
+ 	slope = getSlope(correlation, sdXtmp, sdYtmp);
++	se = getSE(r2, sdXtmp, sdYtmp);
+ }
+ 
+ #endif
+diff --git a/src/mode_cis/cis_initilization.cpp b/src/mode_cis/cis_initilization.cpp
+index 65b9527..d11b32c 100644
+--- a/src/mode_cis/cis_initilization.cpp
++++ b/src/mode_cis/cis_initilization.cpp
+@@ -26,6 +26,7 @@ cis_data::cis_data() {
+ 	phenotype_count = 0;
+ 	covariate_count = 0;
+ 	full_test = false;
++	std_err = false;
+ }
+ 
+ void cis_data::clear() {
+diff --git a/src/mode_cis/cis_main.cpp b/src/mode_cis/cis_main.cpp
+index c11daca..48f1056 100644
+--- a/src/mode_cis/cis_main.cpp
++++ b/src/mode_cis/cis_main.cpp
+@@ -34,6 +34,7 @@ void cis_main(vector < string > & argv) {
+ 	boost::program_options::options_description opt_parameters ("\x1B[32mParameters\33[0m");
+ 	opt_parameters.add_options()
+ 		("normal", "Normal transform the phenotypes.")
++		("std-err", "Calculate the standard error of the beta (slope).")
+ 		("window", boost::program_options::value< unsigned int >()->default_value(1000000), "Size of the cis-window.");
+ 
+ 	boost::program_options::options_description opt_modes ("\x1B[32mAnalysis type\33[0m");
+@@ -134,6 +135,7 @@ void cis_main(vector < string > & argv) {
+ 		vrb.bullet("Region for phenotypes = [" + regions[1] +"]");
+ 		D.full_test = true;
+ 	}
++	if(D.options.count("std-err")) D.std_err = true;
+ 
+ 	//---------------------------
+ 	// 7. SET AGGREGATION METHODS
+diff --git a/src/mode_cis/cis_nominal_pass.cpp b/src/mode_cis/cis_nominal_pass.cpp
+index 9fe3c67..bbec3cb 100644
+--- a/src/mode_cis/cis_nominal_pass.cpp
++++ b/src/mode_cis/cis_nominal_pass.cpp
+@@ -77,14 +77,21 @@ void cis_data::runNominalPass(string fout) {
+ 			int best_nominal_distance = cis_window;
+ 			vector < double > pval_nom = vector < double > (variant_indexes.size() * group_idx[i_group].size(), 0.0);
+ 			vector < double > pval_slope = vector < double > (variant_indexes.size() * group_idx[i_group].size(), 0.0);
++			vector < double > pval_r2 = vector < double > (variant_indexes.size() * group_idx[i_group].size(), 0.0);
++			vector < double > pval_se ;
++			if(std_err) pval_se = vector < double > (variant_indexes.size() * group_idx[i_group].size(), 0.0);
+ 
+ 			//STEP8: ASSOCIATION TESTING
+ 			dof_true = sample_count - 2;
+ 			for (unsigned int p = 0 ; p < group_idx[i_group].size() ; p ++) {
+ 				for (unsigned int v = 0 ; v < variant_indexes.size() ; v ++) {
+ 					double curr_correlation = getCorrelation(genotype_val[variant_indexes[v]], phenotype_val[group_idx[i_group][p]]);
++					double r2 = curr_correlation * curr_correlation;
++					pval_r2[v*group_idx[i_group].size()+p] = r2;
+ 					pval_nom[v*group_idx[i_group].size()+p] = getPvalue(curr_correlation, dof_true);
+ 					pval_slope[v*group_idx[i_group].size()+p] = getSlope(curr_correlation, genotype_sd[variant_indexes[v]], phenotype_sd[group_idx[i_group][p]]);
++					//cerr << genotype_id[variant_indexes[v]] << " " << phenotype_id[group_idx[i_group][p]] << " ";
++					if (std_err) pval_se[v*group_idx[i_group].size()+p] = getSE(r2, genotype_sd[variant_indexes[v]], phenotype_sd[group_idx[i_group][p]]);
+ 					if (abs(curr_correlation) > abs(best_nominal_correlation) || (abs(curr_correlation) == abs(best_nominal_correlation) && abs(variant_distances[v]) < abs(best_nominal_distance))) {
+ 						best_nominal_correlation = curr_correlation;
+ 						best_nominal_variant_rel = v;
+@@ -126,7 +133,9 @@ void cis_data::runNominalPass(string fout) {
+ 						fdo << " " << genotype_start[variant_indexes[v]];
+ 						fdo << " " << genotype_end[variant_indexes[v]];
+ 						fdo << " " << pval_nom[v * group_idx[i_group].size() + p];
++						fdo << " " << pval_r2[v * group_idx[i_group].size() + p];
+ 						fdo << " " << pval_slope[v * group_idx[i_group].size() + p];
++						if (std_err) fdo << " " << pval_se[v * group_idx[i_group].size() + p];
+ 						fdo << " " << ((v == best_nominal_variant_rel && p == best_nominal_phenotype_rel)?"1":"0");
+ 						fdo << endl;
+ 					}
+diff --git a/src/mode_cis/cis_permutation_pass.cpp b/src/mode_cis/cis_permutation_pass.cpp
+index 200d58f..987aea6 100644
+--- a/src/mode_cis/cis_permutation_pass.cpp
++++ b/src/mode_cis/cis_permutation_pass.cpp
+@@ -122,6 +122,9 @@ void cis_data::runPermutationPass(string fout) {
+ 			double dof_true = sample_count - 2;
+ 			double pval_nom = getPvalue(best_nominal_correlation, dof_true);
+ 			double pval_slope = getSlope(best_nominal_correlation, genotype_sd[best_nominal_variant_abs], phenotype_sd[best_nominal_phenotype_abs]);
++			double pval_r2 = best_nominal_correlation * best_nominal_correlation;
++			double pval_se = 0.0;
++			if(std_err) pval_se = getSE(pval_r2, genotype_sd[best_nominal_variant_abs], phenotype_sd[best_nominal_phenotype_abs]);
+ 
+ 			//STEP12: VERBOSE BEST HIT
+ 			if (grp_mode == GRP_BEST)
+@@ -185,7 +188,9 @@ void cis_data::runPermutationPass(string fout) {
+ 			fdo << " " << beta_ml1;
+ 			fdo << " " << beta_ml2;
+ 			fdo << " " << pval_nom;
++			fdo << " " << pval_r2;
+ 			fdo << " " << pval_slope;
++			if(std_err) fdo << " " << pval_se;
+ 			fdo << " " << pval_emp;
+ 			fdo << " " << pval_bml;
+ 			fdo << endl;

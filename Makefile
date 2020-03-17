@@ -1,12 +1,12 @@
 ##########################################
 # SET CORRECTLY THESE 6 PATHS TO COMPILE #
 ##########################################
-BOOST_INC=
-BOOST_LIB=
-RMATH_INC=
-RMATH_LIB=
-HTSLD_INC=
-HTSLD_LIB=
+BOOST_INC=/usr/include
+BOOST_LIB=/usr/lib/x86_64-linux-gnu
+RMATH_INC=/home/llandsmeer/Build/qtltools/R-3.2.2/src/include
+RMATH_LIB=/home/llandsmeer/Build/qtltools/R-3.2.2/src/nmath/standalone
+HTSLD_INC=/home/llandsmeer/Build/qtltools/htslib-1.3.1
+HTSLD_LIB=/home/llandsmeer/Build/qtltools/htslib-1.3.1
 
 #COMPILER MODE C++11
 CXX=g++ -std=c++0x

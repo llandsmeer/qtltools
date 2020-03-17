@@ -25,6 +25,7 @@ cis_data::cis_data() {
 	phenotype_count = 0;
 	covariate_count = 0;
 	full_test = false;
+	std_err = false;
 }
 
 void cis_data::clear() {
