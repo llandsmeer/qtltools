@@ -36,7 +36,7 @@ void cis_data::runConditionalPass(string fout) {
 		vector < unsigned int > variant_indexes;
 		vector < int > variant_distances;
 		for (unsigned int v = 0 ; v < genotype_count ; v ++) {
-			if (phenotype_chr[group_idx[i_group][0]] != genotype_chr[v]) continue;
+			if (!chreq(phenotype_chr[group_idx[i_group][0]], genotype_chr[v])) continue;
 			int ps = (phenotype_start[group_idx[i_group][0]]>cis_window)?(phenotype_start[group_idx[i_group][0]]-cis_window):0;
 			int pe = phenotype_end[group_idx[i_group][0]] + cis_window;
 

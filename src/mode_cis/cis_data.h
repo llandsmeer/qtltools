@@ -32,6 +32,12 @@
 #include "../common/data.h"
 
 class cis_data : public data {
+    bool chreq(std::string a, std::string b) {
+        // copy, not by reference!
+        a.erase(0, a.find_first_not_of('0'));
+        b.erase(0, b.find_first_not_of('0'));
+        return a == b;
+    }
 public:
 	//PARAMETERS
 	unsigned int mode;

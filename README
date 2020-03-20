@@ -1,3 +1,14 @@
+This is a fork of the QTLtools v1.2 release, with the following changes:
+
+ - applied --std-err and r2 patch (daaa9fd) which adds a
+`  standard error of the slope column
+
+ - ignore leading zeros in chromosome comparisons between
+   genotype and phenotype for cis pass - which might slow
+   down code a little bit
+
+---
+
 QTLtools: a tool set for molecular QTL discovery and analysis
 
 ver: 1.1
