@@ -42,12 +42,21 @@ void cis_data::readPhenotypes(string fbed) {
 
 	//Read phenotypes
     unsigned int linecount =0;
-    
     //Read phenotypes
     if (regionPhenotype.chr != "NA"){
         hts_itr_t *itr = tbx_itr_querys(tbx, regionPhenotype.get().c_str());
         vrb.bullet("target region [" + regionPhenotype.get() + "]");
-        if (!itr) vrb.error("Cannot jump to region!");
+        if (!itr) {
+            if (regionPhenotype.chr.rfind("0", 0) == 0) {
+                regionPhenotype.chr.erase(0, regionPhenotype.chr.find_first_not_of('0'));
+            } else {
+                regionPhenotype.chr = "0" + regionPhenotype.chr;
+            }
+            itr = tbx_itr_querys(tbx, regionPhenotype.get().c_str());
+        }
+        if (!itr) {
+            vrb.error("Cannot jump to region!");
+        }
         //Read data
         while (tbx_itr_next(fp, tbx, itr, &str) >= 0) {
             linecount ++;

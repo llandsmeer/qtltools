@@ -9,11 +9,33 @@ This is a fork of the QTLtools v1.2 release, with the following changes:
 
 ---
 
+new column numbering:
+
+# cis nominal mode
+
+0          1  2        3        4 5     6      7          8  9       10      11          12       13           14          15
+phenotype  region               S nsnp  dist   rsid       region             p_nom       r2       beta         se          best
+cg17035109 21 10882030 10882030 - 15372 999554 21:9882476 21 9882476 9882476 1.31758e-19 0.170322 -2.02227e-15 2.12781e-16 0
+cg17035109 21 10882030 10882030 - 15372 999499 21:9882531 21 9882531 9882531 1.31758e-19 0.170322 -1.90539e-15 2.00483e-16 0
+cg17035109 21 10882030 10882030 - 15372 999474 21:9882556 21 9882556 9882556 1.31758e-19 0.170322 -1.8952e-15  1.99411e-16 0
+
+
+# cis permutation mode
+
+0                1   2         3         4  5      6        7            8   9         10        11   12       13        14           15           16         17       18       19         20
+pid              pc  pb        pe        ps nsnps  dist     vid          vc  vb        ve        df   dummy    par1      par2(nindep) pnom         r2         slope    se       pval_emp   pval_bml     
+ENSG00000099991  22  24407643  24574596  +  50113  -457933  22:23949710  22  23949710  23949710  590  106.909  1.2459    64582.1      1.97667e-23  0.155288   34481.6  3310.91  0.766234   0.683884
+ENSG00000099998  22  24615623  24641110  -  47107  435173   22:24180450  22  24180450  24180450  590  45.4023  3.1737    57319.5      9.19196e-49  0.306051   224015   13887.3  0.681319   0.517512
+ENSG00000128262  22  24647797  24661493  +  46806  -467347  22:24180450  22  24180450  24180450  590  29.5432  0.998721  516.086      9.01812e-45  0.284178   34774.3  2272.16  0.687313   0.611355
+
+---
+
 QTLtools: a tool set for molecular QTL discovery and analysis
 
-ver: 1.1
+ver: 1.2
 git: https://github.com/qtltools/qtltools
 web:https://qtltools.github.io/qtltools/
 
 developers:	Olivier Delaneau (olivier.delaneau@gmail.com)
 		Halit Ongen (halit.ongen@unige.ch)
+

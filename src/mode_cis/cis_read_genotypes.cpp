@@ -42,6 +42,7 @@ void cis_data::readGenotypesVCF(string fvcf) {
 
 	//Opening files
 	bcf_srs_t * sr =  bcf_sr_init();
+    regionGenotype.chr.erase(0, regionGenotype.chr.find_first_not_of('0'));
     if ( regionGenotype.chr != "NA"){
         vrb.bullet("target region [" + regionGenotype.get() + "]");
         if (bcf_sr_set_regions(sr, regionGenotype.get().c_str(), 0) == -1) vrb.error("Cannot jump to region!");
@@ -156,10 +157,13 @@ void cis_data::readGenotypesBED(string fbed) {
     unsigned int linecount = 0;
     
     //Jump to interesting region
+    regionGenotype.chr.erase(0, regionGenotype.chr.find_first_not_of('0'));
     if (regionGenotype.chr != "NA"){
         hts_itr_t *itr = tbx_itr_querys(tbx, regionGenotype.get().c_str());
         vrb.bullet("target region [" + regionGenotype.get() + "]");
-        if (!itr) vrb.error("Cannot jump to region!");
+        if (!itr) {
+            vrb.error("Cannot jump to region!");
+        }
         while (tbx_itr_next(fp, tbx, itr, &str) >= 0) {
             linecount ++;
             if (linecount % 100000 == 0) vrb.bullet("Read " + stb.str(linecount) + " lines");
